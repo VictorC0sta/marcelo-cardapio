@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cardápio do Dia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Space+Mono:wght@400;700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --paper:#FAF6EC;
+    --paper-edge:#efe4c8;
+    --ink:#3A2A16;
+    --ink-light:#8A6B45;
+    --accent-red:#B5651A;
+    --line:#e3d4ac;
+
+    --board-bg:#F3AC2E;
+    --board-frame:#7A4310;
+    --board-frame-dark:#5A3009;
+    --chalk-white:#3A2510;
+    --chalk-yellow:#8A3B0E;
+    --chalk-sage:#8A5A22;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:#e8e3d6;
+    font-family:'DM Sans', sans-serif;
+    color:var(--ink);
+    display:flex;
+    justify-content:center;
+    padding:28px 14px 60px;
+  }
+  #app{ width:100%; max-width:480px; }
+
+  /* ---------- COMANDA (management view) ---------- */
+  .comanda{
+    background:var(--paper);
+    border-radius:4px;
+    box-shadow:0 12px 30px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.08);
+    position:relative;
+    padding:30px 26px 26px;
+    overflow:hidden;
+  }
+  .comanda::before{
+    content:"";
+    position:absolute; top:0; left:0; right:0; height:14px;
+    background-image: radial-gradient(circle at 12px 0, transparent 6px, var(--paper) 6.5px);
+    background-size:24px 14px;
+    background-repeat:repeat-x;
+  }
+  .snip{
+    text-align:center;
+    color:var(--ink-light);
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:2px;
+    margin:6px 0 18px;
+    border-bottom:1px dashed var(--line);
+    padding-bottom:10px;
+  }
+  .eyebrow{
+    font-family:'Space Mono', monospace;
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--accent-red);
+    margin:0 0 4px;
+  }
+  .name-input{
+    font-family:'Space Mono', monospace;
+    font-weight:700;
+    font-size:22px;
+    border:none;
+    background:transparent;
+    width:100%;
+    padding:0 0 6px;
+    border-bottom:2px solid var(--ink);
+    color:var(--ink);
+  }
+  .name-input:focus{ outline:none; border-color:var(--accent-red); }
+  .today-date{
+    font-family:'Space Mono', monospace;
+    font-size:12.5px;
+    color:var(--ink-light);
+    margin:8px 0 22px;
+  }
+  .section-title{
+    font-family:'Space Mono', monospace;
+    font-size:12px;
+    letter-spacing:1.5px;
+    text-transform:uppercase;
+    color:var(--ink-light);
+    margin:0 0 12px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-title::after{ content:""; flex:1; border-top:1px dashed var(--line); }
+
+  .dish-row{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .dish-row input[type=checkbox]{
+    width:18px; height:18px; accent-color:var(--accent-red); flex-shrink:0; cursor:pointer;
+  }
+  .dish-name{ flex:1; font-size:14.5px; }
+  .dish-name.off{ color:var(--ink-light); }
+  .dish-price{
+    font-family:'Space Mono', monospace; font-size:13px; color:var(--ink-light); white-space:nowrap;
+  }
+  .del-btn{
+    border:none; background:none; color:var(--ink-light); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px;
+  }
+  .del-btn:hover{ color:var(--accent-red); }
+  .empty-note{ color:var(--ink-light); font-size:13.5px; padding:10px 0; }
+
+  .add-form{
+    display:flex; gap:8px; margin-top:16px;
+  }
+  .add-form input{
+    font-family:'DM Sans', sans-serif;
+    border:1px solid var(--line);
+    background:#fff;
+    border-radius:6px;
+    padding:9px 10px;
+    font-size:13.5px;
+  }
+  .add-form input.f-name{ flex:1; }
+  .add-form input.f-price{ width:88px; }
+  .add-form input:focus{ outline:none; border-color:var(--accent-red); }
+
+  .btn{
+    font-family:'DM Sans', sans-serif;
+    font-weight:700;
+    border:none;
+    border-radius:6px;
+    padding:11px 16px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  .btn-add{ background:var(--ink); color:#fff; }
+  .btn-primary{
+    width:100%; margin-top:22px;
+    background:var(--accent-red); color:#fff; padding:14px;
+    font-size:15px; letter-spacing:.3px;
+  }
+  .btn-primary:disabled{ background:#c9c2b0; cursor:not-allowed; }
+  .btn-ghost{
+    background:none; color:var(--ink-light); text-decoration:underline; padding:8px 0; font-size:13px;
+  }
+
+  /* ---------- BOARD (chalkboard menu) ---------- */
+  .board-wrap{ display:flex; flex-direction:column; align-items:center; }
+
+  .format-toggle{
+    display:flex; gap:8px; margin-bottom:16px;
+    background:#dfd8c4; padding:4px; border-radius:10px;
+  }
+  .format-toggle button{
+    font-family:'DM Sans', sans-serif;
+    font-weight:700; font-size:12.5px;
+    border:none; background:transparent; color:var(--ink-light);
+    padding:8px 14px; border-radius:7px; cursor:pointer;
+  }
+  .format-toggle button.active{
+    background:#fff; color:var(--ink);
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+  }
+
+  .board-frame{
+    background:linear-gradient(155deg,var(--board-frame),var(--board-frame-dark));
+    border-radius:10px;
+    padding:14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.35);
+  }
+  /* Fixed-ratio stage: this is what gets captured 1:1 into a standard-size PNG.
+     Its on-screen pixel size is scaled down for preview via --stage-scale,
+     but html2canvas always renders the true 1080-wide box underneath. */
+  .board{
+    position:relative;
+    overflow:hidden;
+    background:var(--board-bg);
+    width:360px;
+    background-image:
+      radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+      radial-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.08), transparent 60%);
+    background-size:9px 9px, 13px 13px, 100% 100%;
+    background-position:0 0, 4px 6px, 0 0;
+  }
+  .board-inner{
+    position:absolute;
+    left:0; right:0;
+    padding:0 28px;
+    transform-origin: top center;
+  }
+  .board-eyebrow{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    color:var(--chalk-sage);
+    text-align:center;
+    font-family:'Space Mono', monospace;
+    font-size:10.5px;
+    letter-spacing:3px;
+    text-transform:uppercase;
+    margin:10px 0 14px;
+    opacity:.9;
+  }
+  .board-eyebrow .rule{
+    width:22px; height:1px; background:currentColor; opacity:.55;
+  }
+  .board-logo-wrap{
+    position:relative;
+    width:118px; height:118px;
+    margin:0 auto 14px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .board-logo-wrap::before{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(circle, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 70%);
+    border-radius:50%;
+  }
+  .board-logo{
+    position:relative;
+    display:block;
+    max-width:100%;
+    max-height:100%;
+    width:auto; height:auto;
+    object-fit:contain;
+    mix-blend-mode:multiply;
+    filter:contrast(1.06) saturate(1.05);
+  }
+  .board-title{
+    font-family:'Kalam', cursive;
+    font-weight:700;
+    color:var(--chalk-white);
+    text-align:center;
+    font-size:26px;
+    margin:0 0 4px;
+    line-height:1.15;
+    text-shadow:0 1px 0 rgba(255,255,255,.12);
+  }
+  .board-date{
+    font-family:'Kalam', cursive;
+    color:var(--chalk-yellow);
+    text-align:center;
+    font-size:14px;
+    margin:0 0 16px;
+  }
+  .board-rule{
+    position:relative;
+    border:none; height:1px;
+    background:repeating-linear-gradient(90deg, rgba(58,37,16,.35) 0 6px, transparent 6px 11px);
+    margin:0 0 var(--item-gap-outer, 18px);
+  }
+  .board-item{
+    display:flex; align-items:baseline; gap:6px;
+    font-family:'Kalam', cursive;
+    color:var(--chalk-white);
+    font-size:var(--item-font, 16.5px);
+    margin-bottom:var(--item-gap, 11px);
+  }
+  .board-item .dots{
+    flex:1; border-bottom:2px dotted rgba(58,37,16,.3); height:1px; margin-bottom:4px;
+  }
+  .board-item .price{ color:var(--chalk-yellow); font-weight:700; }
+  .board-empty{
+    font-family:'Kalam', cursive; color:var(--chalk-sage); text-align:center; padding:20px 0; font-size:15px;
+  }
+
+  .comanda-logo{
+    display:block;
+    width:96px;
+    height:auto;
+    border-radius:8px;
+    margin:0 auto 16px;
+    box-shadow:0 3px 10px rgba(122,67,16,.15);
+  }
+
+  .board-phone{
+    font-family:'Kalam', cursive;
+    color:var(--chalk-white);
+    text-align:center;
+    font-size:13px;
+    margin:14px 0 0;
+    opacity:.85;
+  }
+  .board-footer{
+    text-align:center; margin-top:var(--footer-gap, 16px); font-family:'Kalam', cursive; color:var(--chalk-sage); font-size:12px;
+  }
+
+  .board-actions{ display:flex; gap:10px; margin-top:22px; }
+  .btn-download{ flex:1; background:var(--ink); color:#fff; }
+  .btn-back{ flex:1; background:#fff; color:var(--ink); border:1px solid var(--line); }
+</style>
+</head>
+<body>
+<div id="app">Carregando…</div>
+
+<script>
+(function(){
+  var STORAGE_KEY = 'menu-data';
+  var LOGO_SRC = 'logo.png';
+
+  var FORMATS = {
+    feed:   { label: 'Feed (4:5)',    baseW: 360, baseH: 450,  captureScale: 3 }, // -> 1080x1350
+    status: { label: 'Status (9:16)', baseW: 360, baseH: 640,  captureScale: 3 }  // -> 1080x1920
+  };
+
+  var state = {
+    restaurantName: 'Marcelo Quentinhas',
+    phone: '(75) 9 8867-5413',
+    dishes: [
+      { id:'1', name:'Ensopado de Boi', price:'20,00' },
+      { id:'2', name:'Ensopado de Porco', price:'20,00' },
+      { id:'3', name:'Ensopado de Frango', price:'20,00' },
+      { id:'4', name:'Frango Cozido', price:'20,00' },
+      { id:'5', name:'Carneiro Cozido', price:'20,00' },
+      { id:'6', name:'Bife ao Molho', price:'20,00' },
+      { id:'7', name:'Mocofato', price:'20,00' },
+      { id:'8', name:'Sarapatel', price:'20,00' },
+      { id:'9', name:'Fígado Frito', price:'20,00' },
+      { id:'10', name:'Frango Frito', price:'20,00' },
+      { id:'11', name:'Filé de Tilápia Frita', price:'20,00' },
+      { id:'12', name:'Carne do Sol', price:'23,00' },
+      { id:'13', name:'Carne de Sol de Porco', price:'23,00'},
+      { id:'14', name:'Charque Frita', price:'23,00' },
+      { id:'15', name:'Feijoada', price:'23,00' },
+      { id:'16', name:'Rabada', price:'25,00' }
+    ],
+    todayIds: ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'],
+    view: 'comanda',
+    format: 'status'
+  };
+  var loaded = false;
+
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+  function weekdayDate(){
+    var d = new Date();
+    var s = d.toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function slug(){
+    var d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+
+  async function save(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify({
+        restaurantName: state.restaurantName,
+        phone: state.phone,
+        dishes: state.dishes,
+        todayIds: state.todayIds,
+        format: state.format
+      }), false);
+    }catch(e){ console.error('Erro ao salvar', e); }
+  }
+
+  async function load(){
+    try{
+      var res = await window.storage.get(STORAGE_KEY, false);
+      if(res && res.value){
+        var data = JSON.parse(res.value);
+        if(data.restaurantName) state.restaurantName = data.restaurantName;
+        if(data.phone) state.phone = data.phone;
+        if(Array.isArray(data.dishes)) state.dishes = data.dishes;
+        if(Array.isArray(data.todayIds)) state.todayIds = data.todayIds;
+        if(data.format && FORMATS[data.format]) state.format = data.format;
+      }
+    }catch(e){
+      // sem dados salvos ainda, mantém os valores de exemplo
+    }
+    loaded = true;
+    render();
+  }
+
+  function esc(str){
+    var d = document.createElement('div');
+    d.textContent = str == null ? '' : str;
+    return d.innerHTML;
+  }
+
+  var FORK_SPOON_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' +
+    '<path d="M6 2v7a2 2 0 0 0 4 0V2M8 2v20M4 2v7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' +
+    '<path d="M17 2c-1.7 0-3 2-3 5s1.3 5 3 5v10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+
+  function renderComanda(){
+    var rows = state.dishes.map(function(d){
+      var checked = state.todayIds.indexOf(d.id) > -1;
+      return (
+        '<div class="dish-row">' +
+          '<input type="checkbox" data-toggle="' + d.id + '" ' + (checked ? 'checked' : '') + ' />' +
+          '<span class="dish-name ' + (checked ? '' : 'off') + '">' + esc(d.name) + '</span>' +
+          '<span class="dish-price">' + (d.price ? 'R$ ' + esc(d.price) : '') + '</span>' +
+          '<button class="del-btn" data-del="' + d.id + '" title="Remover">×</button>' +
+        '</div>'
+      );
+    }).join('');
+
+    if(!state.dishes.length){
+      rows = '<div class="empty-note">Nenhum prato cadastrado ainda. Adicione o primeiro abaixo.</div>';
+    }
+
+    var count = state.todayIds.length;
+
+    return (
+      '<div class="comanda">' +
+        '<div class="snip">✂ - - - - - - - - - - - - - - - - - - - - - - - -</div>' +
+        '<img class="comanda-logo" src="' + LOGO_SRC + '" alt="Logo" />' +
+        '<p class="eyebrow">Comanda de hoje</p>' +
+        '<input class="name-input" id="restaurant-name" value="' + esc(state.restaurantName) + '" placeholder="Nome do restaurante" />' +
+        '<p class="today-date">' + weekdayDate() + '</p>' +
+        '<p class="section-title">Pratos</p>' +
+        '<div id="dish-list">' + rows + '</div>' +
+        '<form class="add-form" id="add-form">' +
+          '<input class="f-name" name="name" placeholder="Nome do prato" required />' +
+          '<input class="f-price" name="price" placeholder="Preço" inputmode="decimal" />' +
+          '<button class="btn btn-add" type="submit">+</button>' +
+        '</form>' +
+        '<button class="btn btn-primary" id="go-board" ' + (count ? '' : 'disabled') + '>' +
+          (count ? 'Gerar cardápio de hoje (' + count + ')' : 'Marque ao menos 1 prato') +
+        '</button>' +
+      '</div>'
+    );
+  }
+
+  function renderBoard(){
+    var chosen = state.dishes.filter(function(d){ return state.todayIds.indexOf(d.id) > -1; });
+    var items = chosen.map(function(d){
+      return (
+        '<div class="board-item">' +
+          '<span class="dish-label">' + esc(d.name) + '</span>' +
+          '<span class="dots"></span>' +
+          (d.price ? '<span class="price">R$ ' + esc(d.price) + '</span>' : '') +
+        '</div>'
+      );
+    }).join('');
+
+    if(!chosen.length){
+      items = '<div class="board-empty">Nenhum prato selecionado para hoje.</div>';
+    }
+
+    var fmt = FORMATS[state.format];
+    var toggleBtns = Object.keys(FORMATS).map(function(key){
+      return '<button data-format="' + key + '" class="' + (state.format === key ? 'active' : '') + '">' +
+        FORMATS[key].label + '</button>';
+    }).join('');
+
+    return (
+      '<div class="board-wrap">' +
+        '<div class="format-toggle">' + toggleBtns + '</div>' +
+        '<div class="board-frame">' +
+          '<div class="board" id="board-capture" style="width:' + fmt.baseW + 'px;height:' + fmt.baseH + 'px;">' +
+            '<div class="board-inner" id="board-inner" style="top:0;">' +
+              '<p class="board-eyebrow"><span class="rule"></span>' + FORK_SPOON_SVG + ' cardápio do dia<span class="rule"></span></p>' +
+              '<div class="board-logo-wrap"><img class="board-logo" src="' + LOGO_SRC + '" alt="Logo" /></div>' +
+              '<p class="board-title">' + esc(state.restaurantName) + '</p>' +
+              '<p class="board-date">' + weekdayDate() + '</p>' +
+              '<hr class="board-rule" />' +
+              items +
+              '<p class="board-footer">bom apetite ✦</p>' +
+              (state.phone ? '<p class="board-phone">' + esc(state.phone) + '</p>' : '') +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="board-actions" style="width:' + fmt.baseW + 'px;">' +
+          '<button class="btn btn-back" id="back-btn">← Voltar</button>' +
+          '<button class="btn btn-download" id="download-btn">Baixar imagem</button>' +
+        '</div>' +
+      '</div>'
+    );
+  }
+
+  // Adjusts density (font size / gaps) based on how many pratos are on the
+  // board, THEN uses scale only as a last-resort safety net — so a long
+  // list never gets silently clipped by overflow:hidden.
+  function fitBoardContent(){
+    var stage = document.getElementById('board-capture');
+    var inner = document.getElementById('board-inner');
+    if(!stage || !inner) return;
+
+    var count = document.querySelectorAll('.board-item').length;
+
+    // density tiers: generous when few pratos, tighter as the list grows
+    var tiers = [
+      { max:6,  itemFont:18,   itemGap:14, outerGap:20, footerGap:18 },
+      { max:9,  itemFont:16.5, itemGap:11, outerGap:18, footerGap:16 },
+      { max:13, itemFont:14.5, itemGap:8,  outerGap:14, footerGap:12 },
+      { max:99, itemFont:13,   itemGap:6,  outerGap:10, footerGap:10 }
+    ];
+    var tier = tiers.find(function(t){ return count <= t.max; }) || tiers[tiers.length-1];
+
+    inner.style.setProperty('--item-font', tier.itemFont + 'px');
+    inner.style.setProperty('--item-gap', tier.itemGap + 'px');
+    inner.style.setProperty('--item-gap-outer', tier.outerGap + 'px');
+    inner.style.setProperty('--footer-gap', tier.footerGap + 'px');
+
+    // reset before measuring
+    inner.style.transform = 'none';
+    inner.style.top = '0px';
+
+    var vPad = 26;
+    var available = stage.clientHeight - vPad * 2;
+    var contentHeight = inner.scrollHeight;
+    if(contentHeight <= 0) return;
+
+    var scale = available / contentHeight;
+    // safety net only — density tiers should do most of the work above
+    scale = Math.max(0.42, Math.min(1.08, scale));
+
+    var visualHeight = contentHeight * scale;
+    var top = Math.max(vPad, (stage.clientHeight - visualHeight) / 2);
+
+    inner.style.transformOrigin = 'top center';
+    inner.style.transform = 'scale(' + scale + ')';
+    inner.style.top = top + 'px';
+  }
+
+  function render(){
+    var app = document.getElementById('app');
+    if(!loaded){ app.textContent = 'Carregando…'; return; }
+    app.innerHTML = state.view === 'board' ? renderBoard() : renderComanda();
+    attachEvents();
+    if(state.view === 'board'){
+      requestAnimationFrame(function(){ requestAnimationFrame(fitBoardContent); });
+    }
+  }
+
+  function attachEvents(){
+    if(state.view === 'comanda'){
+      var nameInput = document.getElementById('restaurant-name');
+      nameInput.addEventListener('change', function(){
+        state.restaurantName = nameInput.value.trim() || 'Restaurante';
+        save();
+      });
+
+      document.querySelectorAll('[data-toggle]').forEach(function(cb){
+        cb.addEventListener('change', function(){
+          var id = cb.getAttribute('data-toggle');
+          var idx = state.todayIds.indexOf(id);
+          if(idx > -1) state.todayIds.splice(idx,1);
+          else state.todayIds.push(id);
+          save();
+          render();
+        });
+      });
+
+      document.querySelectorAll('[data-del]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var id = btn.getAttribute('data-del');
+          state.dishes = state.dishes.filter(function(d){ return d.id !== id; });
+          state.todayIds = state.todayIds.filter(function(x){ return x !== id; });
+          save();
+          render();
+        });
+      });
+
+      document.getElementById('add-form').addEventListener('submit', function(e){
+        e.preventDefault();
+        var name = e.target.elements.name.value.trim();
+        var price = e.target.elements.price.value.trim();
+        if(!name) return;
+        var id = uid();
+        state.dishes.push({ id: id, name: name, price: price });
+        state.todayIds.push(id);
+        save();
+        render();
+      });
+
+      var goBtn = document.getElementById('go-board');
+      if(goBtn){
+        goBtn.addEventListener('click', function(){
+          state.view = 'board';
+          render();
+        });
+      }
+    } else {
+      document.getElementById('back-btn').addEventListener('click', function(){
+        state.view = 'comanda';
+        render();
+      });
+
+      document.querySelectorAll('[data-format]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          state.format = btn.getAttribute('data-format');
+          save();
+          render();
+        });
+      });
+
+      document.getElementById('download-btn').addEventListener('click', async function(){
+        var node = document.getElementById('board-capture');
+        var fmt = FORMATS[state.format];
+        var btn = document.getElementById('download-btn');
+        var original = btn.textContent;
+        btn.textContent = 'Gerando…';
+        btn.disabled = true;
+        try{
+          var canvas = await html2canvas(node, {
+            backgroundColor: null,
+            scale: fmt.captureScale,
+            width: fmt.baseW,
+            height: fmt.baseH
+          });
+          var link = document.createElement('a');
+          link.download = 'cardapio-' + state.format + '-' + slug() + '.png';
+          link.href = canvas.toDataURL('image/png');
+          link.click();
+        }catch(err){
+          alert('Não foi possível gerar a imagem. Tente novamente.');
+        }
+        btn.textContent = original;
+        btn.disabled = false;
+      });
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
